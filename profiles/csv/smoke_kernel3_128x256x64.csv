@@ -1,0 +1,5 @@
+==PROF== Connected to process 31795 (/home/why/workspace/infra/cuda-sgemm/SGEMM_CUDA/build-a100/sgemm_experiment)
+==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM
+kernel=3,M=128,N=256,K=64,seed=1234,device=0,fallback_naive=0,pass=1,max_abs=3.33786e-06,max_rel=0.000622192,norm_l2=1.62264e-07,nan_inf=0,median_ms=1.1223,mean_ms=1.1223,p95_ms=1.1223,std_ms=0,tflops=0.00373723
+==PROF== Disconnected from process 31795
+==WARNING== No kernels were profiled.

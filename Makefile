@@ -23,8 +23,8 @@ clean:
 FUNCTION := $$(cuobjdump -symbols build/sgemm | grep -i Warptiling | awk '{print $$NF}')
 
 cuobjdump: build
-	@cuobjdump -arch sm_86 -sass -fun $(FUNCTION) build/sgemm | c++filt > build/cuobjdump.sass
-	@cuobjdump -arch sm_86 -ptx -fun $(FUNCTION) build/sgemm | c++filt > build/cuobjdump.ptx
+	@cuobjdump -arch sm_80 -sass -fun $(FUNCTION) build/sgemm | c++filt > build/cuobjdump.sass
+	@cuobjdump -arch sm_80 -ptx -fun $(FUNCTION) build/sgemm | c++filt > build/cuobjdump.ptx
 
 # Usage: make profile KERNEL=<integer> PREFIX=<optional string>
 profile: build

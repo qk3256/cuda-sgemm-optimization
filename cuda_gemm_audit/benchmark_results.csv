@@ -1,0 +1,5 @@
+GPU,CUDA_version,dtype,M,N,K,kernel_version,latency_ms,TFLOPS,relative_naive,relative_cublas,correctness,warmup,iters,statistic,source
+A100-SXM4-40GB,12.4,FP32,4096,4096,4096,cuBLAS-0,9.28563,14.8012,unconfirmed,1.000000,pass,3,5,median,results/representative_benchmark.csv
+A100-SXM4-40GB,12.4,FP32,4096,4096,4096,warp-tiling-10,10.4038,13.2104,unconfirmed,0.892515,pass,3,5,median,results/representative_benchmark.csv
+A100-SXM4-40GB,12.4,FP32,128,4096,4096,cuBLAS-0,0.329728,13.0258,unconfirmed,1.000000,pass,3,5,median,results/representative_benchmark.csv
+A100-SXM4-40GB,12.4,FP32,128,4096,4096,warp-tiling-10,1.38138,3.10919,unconfirmed,0.238697,pass,2,3,median,results/representative_benchmark.csv

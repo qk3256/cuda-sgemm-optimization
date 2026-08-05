@@ -1,0 +1,4 @@
+==PROF== Connected to process 58533 (/home/why/workspace/infra/cuda-sgemm/SGEMM_CUDA/build-a100/sgemm_experiment)
+kernel=10,M=128,N=4096,K=4096,seed=1234,device=0,fallback_naive=0,pass=1,max_abs=0.000343323,max_rel=0.0464864,norm_l2=1.19806e-06,nan_inf=0,median_ms=1.10029,mean_ms=1.10056,p95_ms=1.10448,std_ms=0.00216163,tflops=3.90349
+==PROF== Disconnected from process 58533
+==PROF== Report: /home/why/workspace/infra/cuda-sgemm/SGEMM_CUDA/profiles/raw/kernel_10_128x4096x4096.ncu-rep

@@ -1,0 +1,298 @@
+100-sgemm-experiment
+
+$perf-workload-profiling
+
+$perf-nsight-compute-analysis
+
+目标
+将当前的 SGEMM_CUDA 仓库适配到使用 SM80 的 NVIDIA A100-SXM4-40GB GPU，复现主要的 CUDA SGEMM 优化阶段，为 A100 调优代表性内核，并生成可复现的实验报告。
+
+创建并工作在：
+
+text
+codex/a100-sgemm-experiment
+在编辑之前，请检查 README、构建系统、运行器、cuBLAS 参考实现、内核实现以及已安装的技能。
+
+1. 环境和干净构建
+记录：
+
+GPU 型号和选定的 GPU ID
+
+CUDA 驱动和工具包版本
+
+nvcc、ncu、CMake 和 Ninja 版本
+
+当前 Git 提交和工作树状态
+
+可用的内核 ID 及其优化阶段
+
+矩阵布局和 cuBLAS 转置语义
+
+将 CUDA 架构设置为 SM80 并完成干净的发布构建。
+
+将环境信息写入：
+
+text
+reports/environment.md
+2. 正确性测试工具
+扩展运行器以支持：
+
+任意的 M、N 和 K
+
+指定的内核
+
+固定随机种子和 GPU ID
+
+cuBLAS FP32 SGEMM 作为参考
+
+安全处理不可整除的形状
+
+对于每个内核和形状，报告：
+
+通过/失败
+
+最大绝对误差
+
+最大相对误差
+
+归一化 L2 误差
+
+NaN/Inf 计数
+
+内核配置
+
+在所有主要内核上测试以下形状：
+
+text
+4096x4096x4096
+2048x4096x4096
+512x4096x4096
+128x4096x4096
+16x4096x4096
+1000x1536x768
+127x4097x1025
+创建：
+
+text
+scripts/check_correctness.sh
+results/correctness.csv
+3. 可靠的 A100 基准测试
+根据 $perf-workload-profiling 使用 CUDA Events。
+
+要求：
+
+预分配所有缓冲区
+
+使用充分的预热
+
+收集多次测量迭代
+
+仅在测量的事件序列之后同步
+
+对自定义内核和 cuBLAS 使用相同的输入和计时语义
+
+报告中位数、均值、P95、标准差和正确性
+
+吞吐量计算公式：
+
+text
+TFLOP/s = 2 * M * N * K / latency
+对以下可用阶段进行基准测试：
+
+cuBLAS
+
+朴素实现
+
+全局内存合并访问
+
+共享内存分块
+
+块/寄存器分块
+
+向量化内存访问
+
+存储体冲突变体
+
+线程束分块
+
+任何其他现有内核
+
+生成：
+
+text
+scripts/run_benchmarks.sh
+results/a100_benchmark.csv
+results/a100_benchmark.json
+4. A100 调优
+重点关注最强的可配置块/寄存器或线程束分块内核。
+
+在仓库实际暴露的参数上搜索有界配置集，例如：
+
+BM
+
+BN
+
+BK
+
+每个块的线程数
+
+每线程分块大小
+
+线程束分块大小
+
+向量宽度
+
+至少在以下形状上评估：
+
+text
+4096x4096x4096
+512x4096x4096
+128x4096x4096
+16x4096x4096
+对于每个候选配置：
+
+编译；
+
+验证正确性；
+
+重复基准测试；
+
+记录可用的编译器资源使用情况。
+
+记录：
+
+每线程寄存器数
+
+每块共享内存大小
+
+栈帧和溢出信息
+
+延迟和 TFLOP/s
+
+相对于 cuBLAS 的性能
+
+被拒绝配置的失败原因
+
+生成：
+
+text
+scripts/run_autotune.sh
+results/autotune_candidates.csv
+results/autotune_best.csv
+不要构建复杂的通用自动调度策略。只需记录哪个内核/配置在测试的大形状、中等 M 和小 M 形状类别中表现最佳即可。
+
+5. Nsight Compute
+为代表性内核和形状创建性能分析脚本。
+
+从以下指标开始：
+
+SpeedOfLight
+
+LaunchStats
+
+Occupancy
+
+然后在可用时收集针对性指标：
+
+ComputeWorkloadAnalysis
+
+MemoryWorkloadAnalysis
+
+WarpStateStats
+
+SchedulerStats
+
+InstructionStats
+
+roofline
+
+对代表性优化阶段进行性能分析：
+
+text
+4096x4096x4096
+128x4096x4096
+将命令、日志、CSV 导出和 .ncu-rep 文件保存在：
+
+text
+profiles/raw
+profiles/csv
+profiles/summaries
+如果性能计数器需要 root 权限，创建一个名为以下内容的已审阅脚本：
+
+text
+scripts/run_ncu_root.sh
+并记录确切的手动 sudo 命令，而不是阻塞任务的其余部分。
+
+6. 报告
+创建：
+
+text
+reports/a100_sgemm_report.md
+包括：
+
+环境
+
+正确性方法论和结果
+
+基准测试方法论
+
+优化阶段
+
+A100 调优搜索
+
+最佳配置
+
+编译器资源证据
+
+不同形状下的性能
+
+与 cuBLAS 的对比
+
+性能分析工具发现（如有）
+
+负面结果
+
+仍需验证的解释
+
+简洁的简历草稿
+
+十个面试问题和答案
+
+清晰区分：
+
+直接测量的结论
+
+有编译器或性能分析工具证据支持的解释
+
+需要进一步验证的假设
+
+更新 README，提供清晰的复现命令。
+
+执行顺序
+按以下顺序进行：
+
+text
+环境
+-> 干净构建
+-> 正确性
+-> 基线基准测试
+-> A100 调优
+-> 可选的 NCU 性能分析
+-> 报告
+在每个主要阶段之后创建一个清晰的 Git 提交。
+
+完成时，仅报告：
+
+正确性摘要；
+
+主要基准测试结果；
+
+最佳 A100 配置和调优改进；
+
+编译器/性能分析工具证据；
+
+生成的文件；
+
+Git 提交；
+
+未解决的阻塞问题。

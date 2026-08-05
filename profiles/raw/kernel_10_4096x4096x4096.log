@@ -1,0 +1,4 @@
+==PROF== Connected to process 37576 (/home/why/workspace/infra/cuda-sgemm/SGEMM_CUDA/build-a100/sgemm_experiment)
+kernel=10,M=4096,N=4096,K=4096,seed=1234,device=0,fallback_naive=0,pass=1,max_abs=0,max_rel=0,norm_l2=0,nan_inf=0,median_ms=8.95078,mean_ms=8.96205,p95_ms=8.99994,std_ms=0.0236187,tflops=15.355
+==PROF== Disconnected from process 37576
+==PROF== Report: /home/why/workspace/infra/cuda-sgemm/SGEMM_CUDA/profiles/raw/kernel_10_4096x4096x4096.ncu-rep

@@ -40,3 +40,28 @@ GFLOPs at matrix size 4096x4096:
 1. Profiling via [NVIDIA Nsight Compute](https://developer.nvidia.com/nsight-compute) (ncu): `make profile KERNEL=<kernel number>`
 
 Credit goes to [wangzyon/NVIDIA_SGEMM_PRACTICE](https://github.com/wangzyon/NVIDIA_SGEMM_PRACTICE) for the benchmarking setup.
+
+## A100 SM80 reproducible experiment
+
+The experiment branch targets `sm_80` by default. On an A100 host:
+
+```bash
+export CUDA_HOME=/usr/local/cuda-12.4
+export PATH=/home/why/.local/bin:$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+cmake -S . -B build-a100 -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CUDA_COMPILER=$CUDA_HOME/bin/nvcc \
+  -DCMAKE_CUDA_ARCHITECTURES=80 -DCUDA_COMPUTE_CAPABILITY=80
+cmake --build build-a100 --parallel
+DEVICE=0 SEED=1234 CORRECTNESS_WARMUP=3 CORRECTNESS_ITERS=5 \
+  SGEMM_EXE=$PWD/build-a100/sgemm_experiment scripts/check_correctness.sh
+DEVICE=0 WARMUP=10 ITERS=30 SGEMM_EXE=$PWD/build-a100/sgemm_experiment \
+  scripts/run_benchmarks.sh
+DEVICE=0 SGEMM_EXE=$PWD/build-a100/sgemm_experiment scripts/run_autotune.sh
+KERNEL=10 M=4096 N=4096 K=4096 DEVICE=0 \
+  SGEMM_EXE=$PWD/build-a100/sgemm_experiment scripts/run_ncu.sh
+```
+
+`build/sgemm_experiment` accepts arbitrary `--M --N --K`, `--kernel`, `--seed`, and `--device`. For custom kernels whose original implementation lacks boundary guards, non-tile-aligned shapes are executed by an explicitly reported safe naive fallback (`fallback_naive=1`); this prevents out-of-bounds accesses while keeping the requested kernel visible in the result row. CUDA Event timing uses preallocated buffers, warmup, asynchronous event pairs, one post-sequence synchronization, and median/mean/P95/std statistics.
+
+Results are written to `results/correctness.csv`, `results/a100_benchmark.csv`, `results/a100_benchmark.json`, and `results/autotune_*.csv`. Nsight Compute artifacts belong under `profiles/`; if counters require privilege, review and run `scripts/run_ncu_root.sh` manually.
