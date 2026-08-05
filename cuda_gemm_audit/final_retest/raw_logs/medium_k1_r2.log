@@ -1,0 +1,1 @@
+kernel=1,M=128,N=4096,K=4096,seed=1234,device=0,fallback_naive=0,pass=1,max_abs=0.000343323,max_rel=0.0464864,norm_l2=1.19806e-06,nan_inf=0,median_ms=15.4767,mean_ms=15.8373,p95_ms=19.9291,std_ms=1.20719,tflops=0.277511

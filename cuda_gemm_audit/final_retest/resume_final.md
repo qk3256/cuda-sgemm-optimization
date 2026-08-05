@@ -1,28 +1,16 @@
-# Resume finalization status
+# Resume-ready final facts
 
-## Decision
+All figures below are medians across three independent rounds from
+`final_retest/results.csv`.
 
-Do not publish new numeric claims from `final_retest/`: the standardized
-10-warmup/50-measurement/3-round protocol was not executed because the current
-Codex runtime namespace lacks GPU device access.
+- Implemented and validated an FP32 SGEMM optimization ladder on NVIDIA A100
+  SM80: naive (k1), shared-memory tiling (k3), 2D register tiling (k5), and
+  warp tiling (k10), using cuBLAS FP32 (k0) as the reference.
+- On 4096³, warp tiling (k10) reached **16.4233 TFLOP/s**, **56.22×** the
+  naive kernel and **92.12%** of cuBLAS, with `pass=1` in all three rounds.
+- On 128×4096×4096, k10 reached **3.1092 TFLOP/s** and **22.09%** of cuBLAS,
+  documenting the medium-M utilization/throughput drop rather than hiding it.
 
-## Previously supported wording
-
-The earlier representative measurements can still be used if their protocol
-is stated exactly:
-
-- 4096³ cuBLAS FP32: 14.8012 TFLOP/s from the existing representative CSV;
-- 4096³ warp-tiling kernel 10: 13.2104 TFLOP/s from the same CSV;
-- NCU kernel-10 evidence: 97.804% SM throughput and 9.031% DRAM throughput
-  for the existing 4096³ profile.
-
-These are not final-retest numbers.
-
-## Missing final evidence
-
-- 6 representative kernels × 3 performance shapes × 3 rounds;
-- 50 measurements per round;
-- final cross-kernel speedup-vs-naive and ratio-vs-cuBLAS values;
-- final non-divisible execution-path verification under this protocol.
-- kernel 11 vs kernel 12 comparison needed to identify the best existing
-  double-buffer implementation.
+Boundary correctness was also checked on 127×4097×1025: optimized kernels
+reported `fallback_naive=1`, so these results must not be described as native
+arbitrary-dimension support.
