@@ -24,4 +24,5 @@ These are not final-retest numbers.
 - 50 measurements per round;
 - final cross-kernel speedup-vs-naive and ratio-vs-cuBLAS values;
 - final non-divisible execution-path verification under this protocol.
-
+- kernel 11 vs kernel 12 comparison needed to identify the best existing
+  double-buffer implementation.

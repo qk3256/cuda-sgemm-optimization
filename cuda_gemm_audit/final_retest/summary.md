@@ -12,12 +12,13 @@ representative kernel/shape pair. The four shapes were:
   is asserted);
 - existing non-divisible smoke shape 127×4097×1025.
 
-The representative kernel IDs were 1 (naive), 3 (shared-memory tiling), 5
-(2D register tiling), 10 (warp tiling), 11 (the double-buffer stage with an
-existing historical benchmark row), and 0 (cuBLAS FP32 reference). Kernel 12
-is the async/barrier double-buffer variant, but no existing evidence proves it
-is faster than kernel 11, so it was not mislabeled as the best double-buffer
-stage.
+The confirmed representative IDs are 1 (naive), 3 (shared-memory tiling), 5
+(2D register tiling), 10 (warp tiling), and 0 (cuBLAS FP32 reference). Kernel
+11 and kernel 12 are both present double-buffer implementations, but the
+checked-in benchmark set contains no valid 11-vs-12 comparison. The helper
+`scripts/run_final_retest.py` therefore measures both and selects the faster
+one from this standardized round; neither is labeled “best” before that
+comparison exists.
 
 ## Outcome
 
@@ -32,4 +33,3 @@ not guessed latency or error values. Existing prior logs remain available under
 This round cannot promote the project from “representative evidence exists” to
 “standardized 10×50×3 retest completed.” The existing resume numbers remain
 usable only with their original protocol/source, not as final_retest numbers.
-
