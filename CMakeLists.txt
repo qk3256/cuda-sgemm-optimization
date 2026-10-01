@@ -38,3 +38,12 @@ target_link_libraries(simplest_kernel ${CUDA_LIBRARIES})
 add_executable(sgemm_experiment experiment_runner.cu src/runner.cu)
 set_target_properties(sgemm_experiment PROPERTIES CUDA_ARCHITECTURES ${CUDA_COMPUTE_CAPABILITY})
 target_link_libraries(sgemm_experiment ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
+
+# 2026-10-01 isolated optimization harness.  Unlike the historical runner,
+# profile mode launches only the selected custom kernel, so NCU cannot capture
+# the cuBLAS correctness reference by accident.
+add_executable(new_opt_runner new_opt_runner.cu src/runner.cu)
+set_target_properties(new_opt_runner PROPERTIES CUDA_ARCHITECTURES ${CUDA_COMPUTE_CAPABILITY})
+target_compile_options(new_opt_runner PRIVATE
+  $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>)
+target_link_libraries(new_opt_runner ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})
