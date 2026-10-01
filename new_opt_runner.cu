@@ -38,7 +38,7 @@ static Args parse(int argc, char **argv) {
     else if (s == "--mode") a.mode = text();
     else throw std::runtime_error("unknown argument " + s);
   }
-  if (a.kernel < 0 || a.kernel > 12 || a.M <= 0 || a.N <= 0 || a.K <= 0 ||
+  if (a.kernel < 0 || a.kernel > 19 || a.M <= 0 || a.N <= 0 || a.K <= 0 ||
       a.warmup < 0 || a.iters <= 0 || (a.mode != "benchmark" && a.mode != "profile"))
     throw std::runtime_error("invalid argument value");
   return a;
@@ -49,16 +49,25 @@ static const char *kernel_name(int id) {
     "cublas_strict_fp32", "naive", "coalesced", "shared_tiled",
     "register_1d", "register_2d", "vectorized", "bank_reordered",
     "bank_padded", "autotuned", "warp_tiled", "double_buffered",
-    "async_double_buffered"};
+    "async_double_buffered", "b_smem_permuted", "cutlass_like_tiling",
+    "cutlass_like_pipeline", "register_prefetch_swizzle",
+    "register_prefetch_2cta", "register_prefetch_fast_epilogue",
+    "cutlass_register_pipeline"};
   return names[id];
 }
 
 static bool native_safe(const Args &a) {
   if (a.kernel <= 2) return true;
   if (a.kernel >= 3 && a.kernel <= 8) return a.M % 64 == 0 && a.N % 64 == 0 && a.K % 8 == 0;
-  if (a.kernel == 9 || a.kernel == 10 || a.kernel == 12)
+  if (a.kernel == 9 || a.kernel == 10 || a.kernel == 12 || a.kernel == 13)
     return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
   if (a.kernel == 11) return a.M % 128 == 0 && a.N % 256 == 0 && a.K % 16 == 0;
+  if (a.kernel == 14) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 8 == 0;
+  if (a.kernel == 15) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 16 == 0;
+  if (a.kernel == 16) return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
+  if (a.kernel == 17) return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
+  if (a.kernel == 18) return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
+  if (a.kernel == 19) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 8 == 0;
   return false;
 }
 

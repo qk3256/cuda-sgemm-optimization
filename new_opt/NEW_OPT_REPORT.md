@@ -76,9 +76,20 @@ The generated operator is architecture-generic SIMT with minimum CC 5.0 rather t
 
 ## Current status
 
-The baseline and CUTLASS comparison are complete. NCU collection is pending privileged performance-counter access. No optimization will be declared profiler-driven until those reports are collected and inspected.
+The baseline, CUTLASS comparison, and three generations of NCU-guided custom work are complete. The current square best is kernel 17 at 17.13 TFLOP/s, 96.16% of same-session strict cuBLAS. The current small-M best is kernel 19 at 4.72 TFLOP/s, up 5.6% from the initial shape-specific best but still far below cuBLAS and CUTLASS.
+
+The most important transferred ideas were not merely CUTLASS's tile constants. Performance improved when the implementation adopted:
+
+- a balanced CTA/warp/thread hierarchy;
+- same-thread register prefetch before current-tile compute;
+- double-buffered shared storage;
+- a vector-load-compatible A shared layout;
+- split-column, coalesced C stores;
+- explicit register-residency control.
+
+Conversely, a producer/consumer double buffer and a scalar shared permutation both improved selected low-level metrics but lost end-to-end performance through extra instructions or synchronization.
 
 ## Final best and remaining gap
 
-To be filled after the experiment sequence.
+Current square best: kernel 17, CTA `128x128x16`, thread tile `8x8`, two stages, 256 threads, 128 registers/thread, 32 KiB shared/block, 17.13 TFLOP/s and 96.16% of strict cuBLAS. Profiling of kernel 17 is pending final extraction before the next optimization decision.
 

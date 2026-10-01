@@ -328,6 +328,89 @@ void runSgemmAutotuned(int M, int N, int K, float alpha, float *A, float *B,
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+void runSgemmBPermuted(int M, int N, int K, float alpha, float *A, float *B,
+                       float beta, float *C) {
+  constexpr uint BM = 128;
+  constexpr uint BN = 128;
+  constexpr uint BK = 16;
+  constexpr uint TM = 8;
+  constexpr uint TN = 8;
+  dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
+  dim3 blockDim(K13_NUM_THREADS);
+  sgemmBPermuted<BM, BN, BK, TM, TN>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+// CUTLASS SIMT reference hierarchy:
+//   CTA 128x64x8, warp 64x32x8, 2x2 warps, thread tile 8x8.
+// This first version deliberately reuses the existing synchronous warp-tiled
+// mainloop so that the hierarchy can be evaluated before adding stages.
+void runSgemmCutlassLikeTiling(int M, int N, int K, float alpha, float *A,
+                              float *B, float beta, float *C) {
+  constexpr uint NUM_THREADS = 128;
+  constexpr uint BM = 128;
+  constexpr uint BN = 64;
+  constexpr uint BK = 8;
+  constexpr uint WM = 64;
+  constexpr uint WN = 32;
+  constexpr uint WNITER = 1;
+  constexpr uint TM = 8;
+  constexpr uint TN = 8;
+  dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
+  dim3 blockDim(NUM_THREADS);
+  sgemmWarptiling<BM, BN, BK, WM, WN, WNITER, TM, TN, NUM_THREADS>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+// Same hierarchy as runSgemmCutlassLikeTiling, now using the existing
+// two-stage producer/consumer mainloop.  Keeping all tile parameters fixed
+// isolates the effect of staging.
+void runSgemmCutlassLikePipeline(int M, int N, int K, float alpha, float *A,
+                                float *B, float beta, float *C) {
+  constexpr uint NUM_THREADS = 128;
+  constexpr uint BM = 128;
+  constexpr uint BN = 64;
+  constexpr uint BK = 8;
+  constexpr uint WM = 64;
+  constexpr uint WN = 32;
+  constexpr uint WNITER = 1;
+  constexpr uint TM = 8;
+  constexpr uint TN = 8;
+  dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
+  dim3 blockDim(NUM_THREADS);
+  sgemmDoubleBuffering<BM, BN, BK, WM, WN, WNITER, TM, TN, NUM_THREADS>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void runSgemmRegisterPipeline(int M, int N, int K, float alpha, float *A,
+                             float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(N, 128), CEIL_DIV(M, 128));
+  register_pipeline::sgemmRegisterPipelineBeta0<128, 128, 16, 8, 8>
+      <<<gridDim, 256>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void runSgemmRegisterPipelineTwoCtas(int M, int N, int K, float alpha, float *A,
+                                    float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(N, 128), CEIL_DIV(M, 128));
+  register_pipeline::sgemmRegisterPipelineBeta0<128, 128, 16, 8, 8, 2>
+      <<<gridDim, 256>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void runSgemmRegisterPipelineFastEpilogue(int M, int N, int K, float alpha,
+                                         float *A, float *B, float beta,
+                                         float *C) {
+  dim3 gridDim(CEIL_DIV(N, 128), CEIL_DIV(M, 128));
+  register_pipeline::sgemmRegisterPipelineBeta0<128, 128, 16, 8, 8, 2, true>
+      <<<gridDim, 256>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void runSgemmCutlassRegisterPipeline(int M, int N, int K, float alpha, float *A,
+                                    float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(N, 64), CEIL_DIV(M, 128));
+  cutlass_register_pipeline::sgemmCutlassRegisterPipeline<128, 64, 8, 8, 8>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
 void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   // Settings for A100
@@ -542,6 +625,27 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     break;
   case 12:
     runSgemmDoubleBuffering2(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 13:
+    runSgemmBPermuted(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 14:
+    runSgemmCutlassLikeTiling(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 15:
+    runSgemmCutlassLikePipeline(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 16:
+    runSgemmRegisterPipeline(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 17:
+    runSgemmRegisterPipelineTwoCtas(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 18:
+    runSgemmRegisterPipelineFastEpilogue(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 19:
+    runSgemmCutlassRegisterPipeline(M, N, K, alpha, A, B, beta, C);
     break;
   default:
     throw std::invalid_argument("Unknown kernel number");

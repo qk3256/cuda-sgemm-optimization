@@ -25,3 +25,17 @@ baseline_20261001,9,autotuned,128,4096,4096,5,20,1,1,0.000343323,1.19806e-06,1.3
 baseline_20261001,10,warp_tiled,128,4096,4096,5,20,1,1,0.000343323,1.19806e-06,1.3824,1.38245,1.38445,3.10689,measured
 baseline_20261001,11,double_buffered,128,4096,4096,5,20,1,1,0.000343323,1.19806e-06,2.3337,2.3338,2.33677,1.84041,measured
 baseline_20261001,12,async_double_buffered,128,4096,4096,5,20,1,1,0.000343323,1.19806e-06,1.41517,1.41548,1.41722,3.03495,measured
+exp1_b_smem_permuted,13,b_smem_permuted,4096,4096,4096,10,50,1,1,0,0,8.86886,9.10379,11.1555,15.4968,measured
+exp1_b_smem_permuted,13,b_smem_permuted,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,1.29946,1.23516,1.3015,3.3052,measured
+cutlass_like_tiling,14,cutlass_like_tiling,4096,4096,4096,10,50,1,1,0,0,8.51149,8.77439,10.4141,16.1475,measured
+cutlass_like_tiling,14,cutlass_like_tiling,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,0.96768,0.967987,0.970752,4.43842,measured
+cutlass_like_bad_pipeline,15,cutlass_like_pipeline,4096,4096,4096,10,50,1,1,0,0,9.22829,9.48333,11.3756,14.8932,measured
+cutlass_like_bad_pipeline,15,cutlass_like_pipeline,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,1.1049,1.10506,1.10592,3.88721,measured
+article_register_pipeline,16,register_prefetch_swizzle,4096,4096,4096,10,50,1,1,0,0,8.39066,8.69454,10.5288,16.38,measured
+article_register_pipeline,16,register_prefetch_swizzle,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,1.05984,1.06026,1.06086,4.05247,measured
+article_pipeline_2cta,17,register_prefetch_2cta,4096,4096,4096,10,100,1,1,0,0,8.02304,8.20239,9.97683,17.1305,measured
+article_pipeline_2cta,17,register_prefetch_2cta,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,1.04448,1.02525,1.0455,4.11206,measured
+fast_epilogue,18,register_prefetch_fast_epilogue,4096,4096,4096,10,50,1,1,0,0,8.02202,8.42451,9.9799,17.1327,measured
+fast_epilogue,18,register_prefetch_fast_epilogue,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,1.04448,1.04463,1.0455,4.11206,measured
+cutlass_register_pipeline,19,cutlass_register_pipeline,4096,4096,4096,10,50,1,1,0,0,8.36096,8.6699,9.80787,16.4382,measured
+cutlass_register_pipeline,19,cutlass_register_pipeline,128,4096,4096,10,100,1,1,0.000343323,1.19806e-06,0.910336,0.910141,0.912384,4.718,measured
