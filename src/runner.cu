@@ -411,6 +411,56 @@ void runSgemmCutlassRegisterPipeline(int M, int N, int K, float alpha, float *A,
       <<<gridDim, 128>>>(M, N, K, A, B, C);
 }
 
+void runSgemmCutlassRegisterPipelineSwizzled(int M, int N, int K, float alpha,
+                                            float *A, float *B, float beta,
+                                            float *C) {
+  dim3 gridDim(CEIL_DIV(N, 64), CEIL_DIV(M, 128));
+  cutlass_register_pipeline::sgemmCutlassRegisterPipeline<128, 64, 8, 8, 8,
+                                                          true>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
+template <int GROUP_N>
+void runSgemmCutlassRegisterPipelineCtaSwizzled(int M, int N, int K,
+                                               float alpha, float *A,
+                                               float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(M, 128) * GROUP_N,
+               CEIL_DIV(N, 64) / GROUP_N);
+  cutlass_register_pipeline::sgemmCutlassRegisterPipeline<128, 64, 8, 8, 8,
+                                                          true, GROUP_N>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
+template <int MIN_BLOCKS>
+void runSgemmCutlassRegisterPipelineResidency(int M, int N, int K,
+                                             float alpha, float *A, float *B,
+                                             float beta, float *C) {
+  constexpr int GROUP_N = 8;
+  dim3 gridDim(CEIL_DIV(M, 128) * GROUP_N,
+               CEIL_DIV(N, 64) / GROUP_N);
+  cutlass_register_pipeline::sgemmCutlassRegisterPipeline<
+      128, 64, 8, 8, 8, true, GROUP_N, MIN_BLOCKS>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
+void runSgemmCutlassRegisterPipeline4096(int M, int N, int K, float alpha,
+                                        float *A, float *B, float beta,
+                                        float *C) {
+  constexpr int GROUP_N = 8;
+  dim3 gridDim(CEIL_DIV(M, 128) * GROUP_N,
+               CEIL_DIV(N, 64) / GROUP_N);
+  cutlass_register_pipeline::sgemmCutlassRegisterPipeline<
+      128, 64, 8, 8, 8, true, GROUP_N, 4, 4096, 4096>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
+void runSgemmCutlassBk16Pipeline(int M, int N, int K, float alpha, float *A,
+                                float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(N, 64), CEIL_DIV(M, 128));
+  cutlass_bk16_pipeline::sgemmCutlassBk16Pipeline<128, 64, 16, 8, 8>
+      <<<gridDim, 128>>>(M, N, K, A, B, C);
+}
+
 void runSgemmWarptiling(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   // Settings for A100
@@ -646,6 +696,42 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
     break;
   case 19:
     runSgemmCutlassRegisterPipeline(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 20:
+    runSgemmCutlassBk16Pipeline(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 23:
+    runSgemmCutlassRegisterPipelineSwizzled(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 24:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<2>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 25:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<4>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 26:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<8>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 27:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<16>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 28:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<32>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 29:
+    runSgemmCutlassRegisterPipelineCtaSwizzled<64>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 30:
+    runSgemmCutlassRegisterPipelineResidency<3>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 31:
+    runSgemmCutlassRegisterPipelineResidency<2>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 32:
+    runSgemmCutlassRegisterPipelineResidency<5>(M, N, K, alpha, A, B, beta, C);
+    break;
+  case 33:
+    runSgemmCutlassRegisterPipeline4096(M, N, K, alpha, A, B, beta, C);
     break;
   default:
     throw std::invalid_argument("Unknown kernel number");

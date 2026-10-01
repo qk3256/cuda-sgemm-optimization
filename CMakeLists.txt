@@ -8,7 +8,9 @@ find_package(CUDA REQUIRED)
 include(CheckLanguage)
 check_language(CUDA)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CUDA_COMPUTE_CAPABILITY 80 CACHE STRING "CUDA SM architecture (A100=80)")
 
 # in debug mode, add debug symbols to device code
@@ -42,8 +44,11 @@ target_link_libraries(sgemm_experiment ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES
 # 2026-10-01 isolated optimization harness.  Unlike the historical runner,
 # profile mode launches only the selected custom kernel, so NCU cannot capture
 # the cuBLAS correctness reference by accident.
-add_executable(new_opt_runner new_opt_runner.cu src/runner.cu)
+set(CUTLASS_ROOT "/home/why/workspace/project/FastVideo/fastvideo-kernel/include/cutlass"
+    CACHE PATH "CUTLASS source tree")
+add_executable(new_opt_runner new_opt_runner.cu src/runner.cu cutlass_exact.cu)
 set_target_properties(new_opt_runner PROPERTIES CUDA_ARCHITECTURES ${CUDA_COMPUTE_CAPABILITY})
+target_include_directories(new_opt_runner PRIVATE ${CUTLASS_ROOT}/include)
 target_compile_options(new_opt_runner PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>)
 target_link_libraries(new_opt_runner ${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES})

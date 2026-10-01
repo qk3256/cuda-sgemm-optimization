@@ -15,3 +15,4 @@
 #include "kernels/13_kernel_b_permuted.cuh"
 #include "kernels/16_kernel_register_pipeline.cuh"
 #include "kernels/19_kernel_cutlass_register_pipeline.cuh"
+#include "kernels/20_kernel_cutlass_bk16_pipeline.cuh"

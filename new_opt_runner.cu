@@ -15,6 +15,13 @@
 #define CUBLAS_CHECK(call) do { cublasStatus_t e = (call); if (e != CUBLAS_STATUS_SUCCESS) { \
   std::cerr << "cuBLAS error: " << int(e) << '\n'; return 2; } } while (0)
 
+cudaError_t runCutlassExactSgemm(int M, int N, int K, float alpha,
+                                const float *A, const float *B, float beta,
+                                float *C);
+cudaError_t runCutlassExactUniversalSgemm(int M, int N, int K, float alpha,
+                                         const float *A, const float *B,
+                                         float beta, float *C);
+
 struct Args {
   int kernel = 10, M = 4096, N = 4096, K = 4096;
   int seed = 1234, device = 0, warmup = 10, iters = 50;
@@ -38,7 +45,7 @@ static Args parse(int argc, char **argv) {
     else if (s == "--mode") a.mode = text();
     else throw std::runtime_error("unknown argument " + s);
   }
-  if (a.kernel < 0 || a.kernel > 19 || a.M <= 0 || a.N <= 0 || a.K <= 0 ||
+  if (a.kernel < 0 || a.kernel > 33 || a.M <= 0 || a.N <= 0 || a.K <= 0 ||
       a.warmup < 0 || a.iters <= 0 || (a.mode != "benchmark" && a.mode != "profile"))
     throw std::runtime_error("invalid argument value");
   return a;
@@ -52,7 +59,12 @@ static const char *kernel_name(int id) {
     "async_double_buffered", "b_smem_permuted", "cutlass_like_tiling",
     "cutlass_like_pipeline", "register_prefetch_swizzle",
     "register_prefetch_2cta", "register_prefetch_fast_epilogue",
-    "cutlass_register_pipeline"};
+    "cutlass_register_pipeline", "cutlass_bk16_pipeline",
+    "cutlass_exact_simt_128x64x8", "cutlass_exact_universal_128x64x8",
+    "cutlass_register_pipeline_k_swizzle", "cta_swizzle_g2",
+    "cta_swizzle_g4", "cta_swizzle_g8", "cta_swizzle_g16",
+    "cta_swizzle_g32", "cta_swizzle_g64", "residency_3cta",
+    "residency_2cta", "residency_5cta", "specialized_nk4096"};
   return names[id];
 }
 
@@ -68,6 +80,19 @@ static bool native_safe(const Args &a) {
   if (a.kernel == 17) return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
   if (a.kernel == 18) return a.M % 128 == 0 && a.N % 128 == 0 && a.K % 16 == 0;
   if (a.kernel == 19) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 8 == 0;
+  if (a.kernel == 20) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 16 == 0;
+  if (a.kernel == 21) return true;
+  if (a.kernel == 22) return true;
+  if (a.kernel == 23) return a.M % 128 == 0 && a.N % 64 == 0 && a.K % 8 == 0;
+  if (a.kernel == 24) return a.M % 128 == 0 && a.N % (64 * 2) == 0 && a.K % 8 == 0;
+  if (a.kernel == 25) return a.M % 128 == 0 && a.N % (64 * 4) == 0 && a.K % 8 == 0;
+  if (a.kernel == 26) return a.M % 128 == 0 && a.N % (64 * 8) == 0 && a.K % 8 == 0;
+  if (a.kernel == 27) return a.M % 128 == 0 && a.N % (64 * 16) == 0 && a.K % 8 == 0;
+  if (a.kernel == 28) return a.M % 128 == 0 && a.N % (64 * 32) == 0 && a.K % 8 == 0;
+  if (a.kernel == 29) return a.M % 128 == 0 && a.N % (64 * 64) == 0 && a.K % 8 == 0;
+  if (a.kernel >= 30 && a.kernel <= 32)
+    return a.M % 128 == 0 && a.N % (64 * 8) == 0 && a.K % 8 == 0;
+  if (a.kernel == 33) return a.M % 128 == 0 && a.N == 4096 && a.K == 4096;
   return false;
 }
 
@@ -114,6 +139,12 @@ int main(int argc, char **argv) {
       if (a.kernel == 0) {
         if (strict_sgemm(handle, a.M, a.N, a.K, A, B, C) != CUBLAS_STATUS_SUCCESS)
           throw std::runtime_error("strict cuBLAS launch failed");
+      } else if (a.kernel == 21) {
+        if (runCutlassExactSgemm(a.M, a.N, a.K, alpha, A, B, beta, C) != cudaSuccess)
+          throw std::runtime_error("exact CUTLASS SIMT launch failed");
+      } else if (a.kernel == 22) {
+        if (runCutlassExactUniversalSgemm(a.M, a.N, a.K, alpha, A, B, beta, C) != cudaSuccess)
+          throw std::runtime_error("exact CUTLASS universal launch failed");
       } else {
         run_kernel(a.kernel, a.M, a.N, a.K, alpha, A, B, beta, C, handle);
       }

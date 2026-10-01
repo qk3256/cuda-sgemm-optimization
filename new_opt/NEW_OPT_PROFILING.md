@@ -92,7 +92,53 @@ The permutation reduced excess shared wavefronts from 318.8M to 67.1M, raised is
 
 The variant is compute-heavy with mostly efficient global/shared accesses. Its residual gap is associated with limited eligible work, global-load dependency, barriers, and instruction scheduling rather than DRAM bandwidth.
 
-## Current-best profiles
+## Kernel 17 square profile
 
-Pending extraction for square kernel 17 and small-M kernel 19.
+- FMA pipe 96.23%; SM throughput 91.23%; DRAM throughput 4.95%
+- issue active 54.15%; active/eligible warps per scheduler 3.79/1.83
+- theoretical/achieved occupancy 25.0%/23.69%, 16 resident warps/SM
+- 128 registers/thread, 32 KiB shared/block
+- global sectors exactly ideal: 136,314,880
+- shared wavefronts exactly ideal: 436,207,616
+- long scoreboard 0.043, short scoreboard 0.080, MIO throttle 0.024, barrier 0.176 cycles/issued instruction
+- dominant residual categories: math-pipe throttle 2.349, not-selected 2.386, wait 0.895
+
+This established that kernel 17 was no longer memory-bound; the remaining opportunity was instruction organization under the 128-register cap.
+
+## Kernel 19 small-M profile
+
+- only 64 CTAs, 0.15 grid waves/SM
+- achieved occupancy 6.26%, active/eligible warps per scheduler 1.00/0.31
+- long scoreboard 1.087 cycles/issued instruction
+- global transactions ideal, but shared wavefront excess about 18%
+
+Grid underfill is the primary small-M limitation. The shared excess was still actionable and led to kernel 23's K-aware A layout.
+
+## Final profile collection
+
+`scripts/run_new_opt_ncu_final_compare.sh` collects the final hand-written kernel 26 and exact CUTLASS kernel 22. The report files are:
+
+- `new_opt/profiles/final_k26_handwritten.ncu-rep`
+- `new_opt/profiles/final_k22_cutlass_exact.ncu-rep`
+
+### Final square comparison
+
+| Metric | hand-written k26 | exact CUTLASS k22 |
+|---|---:|---:|
+| NCU duration | 9.24 ms | 9.37 ms |
+| compute/SM throughput | 98.28% | 97.22% |
+| FP32 FMA pipe, active-cycle basis | 98.67% | 97.57% |
+| issue active | 54.63% | 63.00% |
+| active / eligible warps per scheduler | 3.84 / 1.48 | 3.83 / 1.62 |
+| achieved occupancy | 23.98% | 23.93% |
+| registers/thread | 128 | 128 |
+| shared memory/block (kernel payload) | 12.29 KiB static | 12.54 KiB dynamic |
+| global L2 sectors actual / ideal | 203,423,744 / 203,423,744 | 203,423,744 / 203,423,744 |
+| shared wavefronts actual / ideal | 486,539,264 / 452,984,832 | 320,503,808 / 319,979,520 |
+| L2 hit rate | 86.15% | 88.98% |
+| executed warp instructions | 2.378B | 2.780B |
+
+Both kernels have perfectly coalesced global traffic and the same register-limited 25% theoretical occupancy. CUTLASS has the superior shared-memory layout: only 0.52M excess wavefronts versus 33.55M for the hand-written kernel. It also has more eligible warps and higher issue activity. The hand-written kernel nevertheless executes **14.5% fewer warp instructions** and sustains a higher FMA-pipe utilization. Its simpler iterator/address machinery more than compensates for the residual shared-wavefront amplification under this shape.
+
+Relevant stalls per issued instruction tell the same story. Hand-written/CUTLASS values are: long scoreboard 0.096/0.002, short scoreboard 0.048/0.003, MIO throttle 0.017/0.001, barrier 1.483/1.365, math-pipe throttle 1.723/1.484, and wait 0.911/0.564. The hand-written kernel does not win by having lower per-instruction stalls; it wins by requiring substantially fewer instructions while keeping the FMA pipe almost continuously active.
 

@@ -67,3 +67,48 @@ After Experiment 1 established the bottleneck mechanics, development switched fr
 - Resources: 128 registers/thread, 12 KiB shared/block, 32-byte compiler stack frame.
 - Conclusion: **keep for small-M, not for square**. The smaller N tile doubles grid concurrency and improves small-M, but BK=8/control/address overhead prevents it matching kernel 17 on the square case.
 
+### Kernel 17 loop-unroll sweep
+
+- Evidence: kernel 17 had essentially ideal global/shared transactions and 96.23% FMA-pipe utilization, leaving loop and scheduling overhead as the plausible square bottleneck.
+- Change: only the outer BK loop unroll factor changed.
+- Result: unroll 4 produced 17.196 TFLOP/s; unroll 8 increased the compiler stack from 16 to 32 bytes and regressed to 16.847 TFLOP/s.
+- Conclusion: **keep unroll 4; reject unroll 8**. More static instruction exposure is not free under a hard 128-register residency cap.
+
+### Exact CUTLASS integration — kernels 21 and 22
+
+- Purpose: place CUTLASS and custom kernels under the identical correctness and timing harness instead of comparing against the standalone profiler's loop.
+- Kernel 21: `device::Gemm` with the selected `128x64x8`, warp `64x32x8`, two-stage SIMT configuration; 17.431 TFLOP/s square and 8.144 TFLOP/s small-M.
+- Kernel 22: the exact generated `DefaultGemmUniversal + GemmUniversalAdapter` type; 17.506 TFLOP/s square and 8.176 TFLOP/s small-M.
+- Conclusion: **keep as a clearly labelled reference, not as custom work**. The standalone profiler's 18.80 TFLOP/s square result is not used in the final ratio because its timing loop differs.
+
+### Kernel 23 — K-aware shared swizzle and two-way unroll
+
+- Current bottleneck evidence: kernel 19 showed about 18% shared wavefront excess. Source-level bank analysis found that cooperative A stores used different K addresses but the same bank because the row permutation did not include K.
+- Hypothesis: XORing the float4 K-group bit into the A shared-row permutation will separate store banks while preserving conflict-free compute loads, where K is warp-uniform.
+- Modification: retain CTA `128x64x8`, warp `64x32`, thread `8x8`, 128 threads, and two stages. Change only A shared placement/read addressing; then separately apply `#pragma unroll 2` to the BK loop.
+- Correctness: pass on square and small-M; square matched strict cuBLAS bit-for-bit in the fixed test.
+- Before outer-loop unroll: 17.139 TFLOP/s square, 5.497 TFLOP/s small-M.
+- After outer-loop unroll: **17.566 TFLOP/s square and 6.668 TFLOP/s small-M**. Static resources are 128 registers/thread, 12 KiB shared/block, and zero compiler stack bytes.
+- Stable square ratio: **98.56–98.59% of strict FP32 cuBLAS** in a 200-iteration cuBLAS/custom/CUTLASS/custom/cuBLAS sandwich.
+- Conclusion: **keep as the pre-CTA-swizzle base**. It also slightly exceeds the exact CUTLASS Universal reference (17.506 TFLOP/s) under the same runner.
+
+### Kernels 24–29 — CTA scheduling swizzle
+
+- Evidence: per-CTA memory transactions and compute were already efficient, leaving cross-CTA cache locality and scheduling order as a low-risk remaining variable.
+- Modification: reproduce CUTLASS identity-swizzle grouping while preserving the kernel 23 CTA, warp, thread, and shared layouts. Sweep N-group sizes 2, 4, 8, 16, 32, and 64.
+- Results: 17.520, 17.517, **17.723**, 17.719, 17.700, and 17.649 TFLOP/s respectively.
+- Conclusion: **keep group 8 as kernel 26**. It reaches 99.45–99.47% of the stable 17.817–17.822 TFLOP/s strict-cuBLAS baseline and exceeds the exact CUTLASS reference under the same harness.
+
+### Resource and specialization checks — kernels 30–33
+
+- Residency sweep: 3 CTA/SM used 168 registers and reached 17.524 TFLOP/s; 2 CTA/SM used 234 registers and fell to 16.378; 5 CTA/SM forced 96 registers plus a 40-byte stack and fell to 16.669. Four CTA/SM and 128 registers is the optimum.
+- Compile-time `N=K=4096` specialization regressed to 17.451 TFLOP/s; the compiler already optimized the dynamic-stride loop effectively.
+- Conclusion: **reject all**; retain the general kernel 26.
+
+### Multi-size square sweep
+
+- The same kernel 26 was tested at 1024, 2048, 3072, 3584, 4096, 5120, 6144, and 8192 without retuning.
+- It is poor at 1024 because the grid is too small, ties cuBLAS at 2048 in the initial sweep, reaches 99.4% at 4096, and reaches 96.9% at 8192.
+- Short 50-iteration samples appeared to exceed cuBLAS at 3072 and 6144. Longer 200-iteration sandwich repeats were clock-state sensitive and did not show a consistent win.
+- Conclusion: do not claim a general cuBLAS victory. The defensible headline is **99.4% of strict FP32 cuBLAS at 4096 cubed**.
+

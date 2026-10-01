@@ -46,8 +46,10 @@ __device__ __forceinline__ void compute_tile(const float *As, const float *Bs,
 template <int BM = 128, int BN = 128, int BK = 16, int TM = 8, int TN = 8,
           int MIN_BLOCKS_PER_SM = 1, bool FAST_ALPHA1_BETA0 = false>
 __global__ __launch_bounds__(256, MIN_BLOCKS_PER_SM)
-void sgemmRegisterPipelineBeta0(int M, int N, int K, float alpha, float *A,
-                               float *B, float beta, float *C) {
+void sgemmRegisterPipelineBeta0(int M, int N, int K, float alpha,
+                               const float *__restrict__ A,
+                               const float *__restrict__ B, float beta,
+                               float *__restrict__ C) {
   const int tid = threadIdx.x;
   const int warp_id = tid / 32;
   const int lane_id = tid % 32;
@@ -65,13 +67,13 @@ void sgemmRegisterPipelineBeta0(int M, int N, int K, float alpha, float *A,
 
   float sum[TM * TN] = {0.0f};
 
-  float *a_ptr = A + (blockIdx.y * BM + load_a_row) * K + load_a_col;
-  float *b_ptr = B + load_b_row * N + blockIdx.x * BN + load_b_col;
+  const float *a_ptr = A + (blockIdx.y * BM + load_a_row) * K + load_a_col;
+  const float *b_ptr = B + load_b_row * N + blockIdx.x * BN + load_b_col;
 
-  float4 next_a0 = *reinterpret_cast<float4 *>(&a_ptr[0]);
-  float4 next_a1 = *reinterpret_cast<float4 *>(&a_ptr[64 * K]);
-  float4 next_b0 = *reinterpret_cast<float4 *>(&b_ptr[0]);
-  float4 next_b1 = *reinterpret_cast<float4 *>(&b_ptr[8 * N]);
+  float4 next_a0 = *reinterpret_cast<const float4 *>(&a_ptr[0]);
+  float4 next_a1 = *reinterpret_cast<const float4 *>(&a_ptr[64 * K]);
+  float4 next_b0 = *reinterpret_cast<const float4 *>(&b_ptr[0]);
+  float4 next_b1 = *reinterpret_cast<const float4 *>(&b_ptr[8 * N]);
 
   As[(load_a_col + 0) * BM + swizzle_a(load_a_col + 0, load_a_row)] = next_a0.x;
   As[(load_a_col + 1) * BM + swizzle_a(load_a_col + 1, load_a_row)] = next_a0.y;
@@ -87,16 +89,17 @@ void sgemmRegisterPipelineBeta0(int M, int N, int K, float alpha, float *A,
 
   int read_idx = 0;
   int write_idx = 1;
+#pragma unroll 4
   for (int bk = BK; bk < K; bk += BK) {
     a_ptr += BK;
     b_ptr += BK * N;
 
     // Register prefetch.  The dependent shared stores occur only after the
     // current tile's FMA stream, allowing the global loads to overlap it.
-    next_a0 = *reinterpret_cast<float4 *>(&a_ptr[0]);
-    next_a1 = *reinterpret_cast<float4 *>(&a_ptr[64 * K]);
-    next_b0 = *reinterpret_cast<float4 *>(&b_ptr[0]);
-    next_b1 = *reinterpret_cast<float4 *>(&b_ptr[8 * N]);
+    next_a0 = *reinterpret_cast<const float4 *>(&a_ptr[0]);
+    next_a1 = *reinterpret_cast<const float4 *>(&a_ptr[64 * K]);
+    next_b0 = *reinterpret_cast<const float4 *>(&b_ptr[0]);
+    next_b1 = *reinterpret_cast<const float4 *>(&b_ptr[8 * N]);
 
     compute_tile<BM, BN, BK, TM, TN>(As, Bs, read_idx, c_row, c_col, sum);
 
